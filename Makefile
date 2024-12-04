@@ -12,6 +12,6 @@ all:
 clean:
 	rm process
 	rm gateway.log 
+	rm *.o
 	rm logFifo
-	rm Log_Process.o
 

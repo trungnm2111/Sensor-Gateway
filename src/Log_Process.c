@@ -1,6 +1,9 @@
 #include "../inc/Log_Process.h"
 
-
+/**
+ * @brief Log process
+ * 
+ */
 void logProcess()
 {
     // Mở FIFO để đọc
@@ -42,6 +45,12 @@ void logProcess()
     close(fifo_fd);
 }
 
+/**
+ * @brief Lấy thời gian hiện tại
+ * 
+ * @param buffer Chuỗi lưu thời gian
+ * @param size Kích thước buffer
+ */
 void get_timeStamp(char *buffer, size_t size) 
 {
     time_t now = time(NULL);

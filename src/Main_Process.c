@@ -1,4 +1,9 @@
 #include "../inc/Main_Process.h"
+
+/**
+ * @brief Tạo FIFO
+ * 
+ */
 void createFifo() 
 {
     // Kiểm tra xem file có tồn tại không
@@ -11,8 +16,12 @@ void createFifo()
     }
 }
 
-
-// luong quan ly ket noi
+/**
+ * @brief Thread quản lý kết nối
+ * 
+ * @param arg Tham số truyền vào
+ * @return void* 
+ */
 void *Thread_ConnectionManger(void *arg)
 {
     connection_opened(1);
@@ -27,7 +36,12 @@ void *Thread_ConnectionManger(void *arg)
     return NULL;
 }
 
-// luong quan ly du lieu
+/**
+ * @brief Thread quản lý dữ liệu
+ * 
+ * @param arg Tham số truyền vào
+ * @return void* 
+ */
 void *Thread_DataManager(void *arg)
 {
     Sensor_ColdReport(1, 25.5);
@@ -43,7 +57,13 @@ void *Thread_DataManager(void *arg)
     return NULL;
 }
 
-// luong quan ly luu tru 
+/**
+ * @brief Thread control storage
+ * 
+ * @param arg Tham số truyền vào
+ * 
+ * @return void*
+ */
 void *Thread_StorageManager(void *arg)
 {
     Sql_EstablishedConnection();
@@ -61,25 +81,28 @@ void *Thread_StorageManager(void *arg)
 
 void mainProcess()
 {
-    // Khởi tạo mutex
     pthread_mutex_init(&resource.mutex, NULL);
 
-    // Khởi tạo các luồng
     pthread_t connection_thread, data_thread, storage_thread;
     pthread_create(&connection_thread, NULL, Thread_ConnectionManger, NULL);
     pthread_create(&data_thread, NULL, Thread_DataManager, NULL);
     pthread_create(&storage_thread, NULL, Thread_StorageManager, NULL);
 
-    // Chờ các luồng kết thúc
     pthread_join(connection_thread, NULL);
     pthread_join(data_thread, NULL);
     pthread_join(storage_thread, NULL);
 
-    // Hủy mutex
     pthread_mutex_destroy(&resource.mutex);
 }
 
-// // Hàm ghi log-event vào FIFO
+/**
+ * @brief Writes a log event to the FIFO log system.
+ * 
+ * @param log_event The log event to write.
+ * 
+ * This function writes a given log event to the FIFO log system.
+ * It ensures that the log event is written atomically and consistently.
+ */
 void write_logEvent(const char *log_event)
 {
     pthread_mutex_lock(&resource.mutex);
@@ -94,7 +117,17 @@ void write_logEvent(const char *log_event)
     pthread_mutex_unlock(&resource.mutex);
 }
 
-
+/**
+ * @brief Formats a log event into a human-readable message.
+ * 
+ * @param event The event to format.
+ * @param buffer The buffer to store the formatted message.
+ * @param buffer_size The size of the buffer.
+ * 
+ * This function formats a given `LogEvent` structure into a human-readable
+ * log message and stores it in the provided buffer. It ensures that the event
+ * is recorded in a structured and consistent format.
+ */
 void format_log_event(LogEvent event, char *buffer, size_t buffer_size) 
 {
     switch (event.type) {
@@ -133,7 +166,6 @@ void format_log_event(LogEvent event, char *buffer, size_t buffer_size)
     }
 }
 
-
 /**
  * @brief Logs an event to the FIFO log system.
  *
@@ -143,15 +175,6 @@ void format_log_event(LogEvent event, char *buffer, size_t buffer_size)
  *
  * @param event The event to log, containing details such as the type of event,
  *              sensorNodeID, temperature value, or other additional information.
- *
- * @note The `LogEvent` structure must be properly initialized before calling this function.
- *       The FIFO must be created and available for writing to ensure successful operation.
- *
- * Example usage:
- * @code
- * LogEvent event = { .type = TOO_HOT, .sensorNodeID = 1, .temperatureValue = 35.5 };
- * log_event(event);
- * @endcode
  */
 void log_event(LogEvent event) 
 {
@@ -160,47 +183,112 @@ void log_event(LogEvent event)
     write_logEvent(log_message); // Ghi log-event vào FIFO
 }
 
+/**
+ * @brief Logs a connection opened event.
+ * 
+ * @param sensorNodeID The ID of the sensor node that opened the connection.
+ * 
+ * This function logs a connection opened event to the FIFO log system.
+ * It records the sensor node ID that opened the connection.
+ */
 void connection_opened(int sensorNodeID) {
     LogEvent event = { .type = CONNECTION_OPENED, .sensorNodeID = sensorNodeID };
     log_event(event);
 }
 
+/**
+ * @brief Logs a connection closed event.
+ * 
+ * @param sensorNodeID The ID of the sensor node that closed the connection.
+ * 
+ * This function logs a connection closed event to the FIFO log system.
+ * It records the sensor node ID that closed the connection.
+ */
 void connection_closed(int sensorNodeID) {
     LogEvent event = { .type = CONNECTION_CLOSED, .sensorNodeID = sensorNodeID };
     log_event(event);
 }
 
+/**
+ * @brief Logs a sensor node reporting too cold event.
+ * 
+ * @param sensorNodeID The ID of the sensor node that reported the event.
+ * @param avg_temp The average temperature value reported by the sensor node.
+ * 
+ * This function logs a sensor node reporting too cold event to the FIFO log system.
+ * It records the sensor node ID and the average temperature value.
+ */
 void Sensor_ColdReport(int sensorNodeID, double avg_temp) {
     LogEvent event = { .type = TOO_COLD, .sensorNodeID = sensorNodeID, .temperatureValue = avg_temp };
     log_event(event);
 }
 
+/**
+ * @brief Logs a sensor node reporting too hot event.
+ * 
+ * @param sensorNodeID The ID of the sensor node that reported the event.
+ * @param avg_temp The average temperature value reported by the sensor node.
+ * 
+ * This function logs a sensor node reporting too hot event to the FIFO log system.
+ * It records the sensor node ID and the average temperature value.
+ */
 void Sensor_HotReport(int sensorNodeID, double avg_temp) {
     LogEvent event = { .type = TOO_HOT, .sensorNodeID = sensorNodeID, .temperatureValue = avg_temp };
     log_event(event);
 }
 
+/**
+ * @brief Logs an invalid sensor node ID event.
+ * 
+ * @param nodeID The invalid sensor node ID.
+ * 
+ * This function logs an invalid sensor node ID event to the FIFO log system.
+ * It records the invalid sensor node ID.
+ */
 void Sensor_IdInvalid(int nodeID) {
     LogEvent event = { .type = INVALID_SENSOR_NODE_ID, .sensorNodeID = nodeID };
     log_event(event);
 }
 
+/**
+ * @brief Logs a SQL connection established event.
+ * 
+ * This function logs a SQL connection established event to the FIFO log system.
+ */
 void Sql_EstablishedConnection() {
     LogEvent event = { .type = SQL_CONNECTION_ESTABLISHED };
     log_event(event);
 }
 
+/**
+ * @brief Logs a new table created event.
+ * 
+ * @param table_name The name of the new table created.
+ * 
+ * This function logs a new table created event to the FIFO log system.
+ * It records the name of the new table created.
+ */
 void Sql_CreateTable(const char *table_name) {
     LogEvent event = { .type = TABLE_CREATED };
     snprintf(event.extraInfo, sizeof(event.extraInfo), "%s", table_name);
     log_event(event);
 }
 
+/**
+ * @brief Logs a SQL connection lost event.
+ * 
+ * This function logs a SQL connection lost event to the FIFO log system.
+ */
 void Sql_LostConnection() {
     LogEvent event = { .type = SQL_CONNECTION_LOST };
     log_event(event);
 }
 
+/**
+ * @brief Logs a SQL connection failed event.
+ * 
+ * This function logs a SQL connection failed event to the FIFO log system.
+ */
 void Sql_FailedConnection() {
     LogEvent event = { .type = SQL_CONNECTION_FAILED };
     log_event(event);
