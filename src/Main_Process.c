@@ -1,10 +1,9 @@
 #include "../inc/Main_Process.h"
 
-extern SharedQueue shared_queue; 
-SensorNodeState sensorStates[MAX_NODES];
-void Data_CaculationAverage(SensorData sensor_data);
+static void Data_CaculationAverage(SensorData sensor_data);
 
 int port_no = 0;
+
 /**
  * @brief Tạo FIFO
  * 
@@ -63,11 +62,16 @@ void *Thread_DataManager(void *arg)
     }
     while(1)
     {
-        dequeue(&shared_queue, &sensor_data); // lấy dữ liệu có trong queue 
+        dequeue(&shared_queue, &sensor_data); 
+        if (strlen(sensor_data.data) >= sizeof(sensor_data.data)) {
+            printf("Data string overflow detected\n");
+            continue; 
+        }
         printf("Data from sensor %d: %s\n", sensor_data.sensorNodeID, sensor_data.data);
         Data_CaculationAverage(sensor_data);
+        enqueue(&shared_queue, &sensor_data);
+        sleep(10);
     }
-    sleep(10);
     return NULL;
 }
 
@@ -78,13 +82,15 @@ void *Thread_DataManager(void *arg)
  * 
  * @return void*
  */
-void *Thread_StorageManager(void *arg)
-{
-    // Sql_EstablishedConnection();
-    // Sql_CreateTable("temperature_data");
-    // Sql_LostConnection();
-    // Sql_FailedConnection();
-    sleep(10);
+
+void *Thread_StorageManager(void *arg) {
+    SensorData sensor_data;
+    
+    MYSQL *db_conn = NULL;
+    int result = HandleDatabaseStorage(&sensor_data);
+    if (result == -1) {
+        pthread_exit(NULL);
+    }
     return NULL;
 }
 
@@ -104,76 +110,22 @@ void mainProcess()
     pthread_mutex_destroy(&resource.mutex);
 }
 
-// Khởi tạo hàng đợi
-void init_queue(SharedQueue *q) {
-    q->front = 0;
-    q->rear = 0;
-    q->count = 0;
-    pthread_mutex_init(&q->mutex, NULL);
-    pthread_cond_init(&q->cond, NULL);
-}
-
-// Thêm phần tử vào hàng đợi
-void enqueue(SharedQueue *q, SensorData *data) 
-{
-    pthread_mutex_lock(&q->mutex);
-
-    // Kiểm tra hàng đợi có đầy không
-    if (q->count == MAX_QUEUE_SIZE) {
-        printf("Queue is full! Dropping data.\n");
-        pthread_mutex_unlock(&q->mutex);
-        return;
-    }
-
-    // Thêm dữ liệu vào hàng đợi
-    q->queue[q->rear] = *data;
-    q->rear = (q->rear + 1) % MAX_QUEUE_SIZE;
-    q->count++;
-
-    // Thông báo cho thread đang chờ
-    pthread_cond_signal(&q->cond);
-
-    pthread_mutex_unlock(&q->mutex);
-}
-
-// Lấy phần tử từ hàng đợi
-int dequeue(SharedQueue *q, SensorData *data) 
-{
-    pthread_mutex_lock(&q->mutex);
-
-    // Chờ khi hàng đợi trống
-    while (q->count == 0) {
-        pthread_cond_wait(&q->cond, &q->mutex);
-    }
-
-    // Lấy dữ liệu từ hàng đợi
-    *data = q->queue[q->front];
-    q->front = (q->front + 1) % MAX_QUEUE_SIZE;
-    q->count--;
-
-    pthread_mutex_unlock(&q->mutex);
-    return 0;
-}
-
-void Data_CaculationAverage(SensorData sensor_data)
+static void Data_CaculationAverage(SensorData sensor_data)
 {
     double temperature = atof(sensor_data.data);
-    // Tìm trạng thái sensor tương ứng
     int nodeID = sensor_data.sensorNodeID;
-    if (nodeID < 0 ) {
+    if (nodeID < 0 || nodeID >= MAX_NODES) {
         printf("Invalid sensor node ID: %d\n", nodeID);
         Log_InvalidIDSensor(nodeID);
-        return; // Bỏ qua dữ liệu không hợp lệ
+        return; 
     }
     SensorNodeState *state = &sensorStates[nodeID];
     // Cập nhật trung bình động
     state->runningAverage = (state->runningAverage * state->sampleCount + temperature) / (state->sampleCount + 1);
     state->sampleCount++;
     if (state->runningAverage > 30) {
-        Log_ReportHotSensor(nodeID,state->runningAverage);
-        // printf("Node %d: Too Hot (%.2f°C)\n", nodeID, state->runningAverage);
+        Log_ReportHotSensor(nodeID, state->runningAverage);
     } else if (state->runningAverage < 15) {
-        Log_ReportColdSensor(nodeID,state->runningAverage);
-        // printf("Node %d: Too Cold (%.2f°C)\n", nodeID, state->runningAverage);
+        Log_ReportColdSensor(nodeID, state->runningAverage);
     }
 }

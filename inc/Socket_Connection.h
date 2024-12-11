@@ -16,7 +16,7 @@
 #include <errno.h>
 
 #include "Log_Process.h"
-#include "Main_Process.h"
+#include "Queue_Share.h"
 
 #define MAX_CLIENTS 5       // Số lượng client tối đa
 #define MAX_CONNECTIONS 5   // Số lượng kết nối tối đa
