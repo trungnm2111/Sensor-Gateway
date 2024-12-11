@@ -16,6 +16,7 @@
 #include <errno.h>
 
 #include "Log_Process.h"
+#include "Main_Process.h"
 
 #define MAX_CLIENTS 5       // Số lượng client tối đa
 #define MAX_CONNECTIONS 5   // Số lượng kết nối tối đa
@@ -25,8 +26,6 @@
 #define BUFF_SIZE 256
 #define handle_error(msg) \
     do { perror(msg); exit(EXIT_FAILURE); } while (0)
-
-
 
 int CreateSocket(int port_no, int *server_fd, struct sockaddr_in *server_addr);
 void Client_Handler(int server_fd);

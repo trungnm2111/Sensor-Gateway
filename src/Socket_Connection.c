@@ -1,7 +1,14 @@
 #include "../inc/Socket_Connection.h"
 
+SharedQueue shared_queue;
+int numReadings;
+#define RUNNING_AVG_WINDOW 10   // Kích thước cửa sổ cho trung bình động
+#define TEMP_THRESHOLD_HOT 30  // Ngưỡng nhiệt độ "quá nóng"
+#define TEMP_THRESHOLD_COLD 10 // Ngưỡng nhiệt độ "quá lạnh"
+
 void Client_Handler(int server_fd)
 {
+    SensorData sensor_data;
     fd_set read_fds, temp_fds;
     int client_sockets[MAX_CLIENTS] = {0}; // Danh sách socket của các client
     int max_fd = server_fd;
@@ -14,7 +21,7 @@ void Client_Handler(int server_fd)
     FD_ZERO(&read_fds);
     FD_SET(server_fd, &read_fds);
     printf("Server is ready to accept clients...\n");
-
+    
     while (1) {
         temp_fds = read_fds; // Sao chép tập file descriptor
         // Chờ sự kiện trên các file descriptor
@@ -65,7 +72,7 @@ void Client_Handler(int server_fd)
                 } else {
                     // Xử lý dữ liệu nhận được
                     buffer[valread] = '\0';
-                    printf("Message from client %d: %s\n", i, buffer);
+                    printf("Message from client %d: %s\n", i, buffer);        
                     if (strncmp(buffer, "exit", 4) == 0) {
                         printf("Client at socket %d requested disconnection.\n", i);
                         Log_CloseConnection(ntohs(client_addr.sin_port));
@@ -73,6 +80,15 @@ void Client_Handler(int server_fd)
                         FD_CLR(sock, &read_fds);
                         client_sockets[i] = 0;
                     }
+                    else 
+                    {
+                        // Chuẩn bị dữ liệu để ghi vào hàng đợi
+                        strncpy(sensor_data.data, buffer, sizeof(sensor_data.data) - 1);
+                        sensor_data.sensorNodeID = ntohs(client_addr.sin_port);
+                        // Ghi dữ liệu vào hàng đợi
+                        enqueue(&shared_queue, &sensor_data);
+                    }
+                    
                 }
             }
         }

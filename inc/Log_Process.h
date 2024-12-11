@@ -12,7 +12,7 @@
 #include <pthread.h>
 #include <time.h>
 
-#include "./Main_Process.h"
+// #include "./Main_Process.h"
 
 #define FIFO_NAME "logFifo"
 
