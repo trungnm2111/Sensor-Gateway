@@ -5,12 +5,13 @@ CFLAGS := -pthread -lmysqlclient
 
 all:
 	touch gateway.log
-	$(CC) -c ./src/Log_Process.c  $(CFLAGS)
-	$(CC) -c ./src/Queue_Share.c  $(CFLAGS)
-	$(CC) -c ./src/Socket_Connection.c  $(CFLAGS)
-	$(CC) -c ./src/Sql_DB.c  $(CFLAGS)
-	$(CC) -c ./src/Main_Process.c  $(CFLAGS)
-	$(CC) -g -o process ./src/main.c Main_Process.o Log_Process.o Socket_Connection.o Queue_Share.o Sql_DB.o $(CFLAGS)
+
+	$(CC) -c ./src/log_manager.c  $(CFLAGS)
+	$(CC) -c ./src/queue_share.c  $(CFLAGS)
+	$(CC) -c ./src/socket_connection.c  $(CFLAGS)
+	$(CC) -c ./src/sql_db.c  $(CFLAGS)
+	$(CC) -c ./src/sensor_data_manager.c  $(CFLAGS)
+	$(CC) -g -o process ./src/main.c sensor_data_manager.o log_manager.o socket_connection.o queue_share.o sql_db.o $(CFLAGS)
 
 clean:
 	rm process

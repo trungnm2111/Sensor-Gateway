@@ -1,16 +1,13 @@
-#include "../inc/Main_Process.h"
+#include "../inc/sensor_data_manager.h"
 
 static void Data_CaculationAverage(SensorData sensor_data);
 
-int port_no = 0;
+int port_no = 0; // Port number to connect to
 
-/**
- * @brief Tạo FIFO
- * 
- */
+
 void createFifo() 
 {
-    // Kiểm tra xem file có tồn tại không
+    // Create FIFO if not exists
     if(access(FIFO_NAME, F_OK) == -1) 
     {
         while (mkfifo(FIFO_NAME, 0666) != 0) 
@@ -19,12 +16,7 @@ void createFifo()
     }
 }
 
-/**
- * @brief Thread quản lý kết nối
- * 
- * @param arg Tham số truyền vào
- * @return void* 
- */
+
 void *Thread_ConnectionManger(void *arg)
 {
     int server_fd, new_socket_fd;
@@ -34,32 +26,32 @@ void *Thread_ConnectionManger(void *arg)
 
     memset(&serv_addr, 0, sizeof(struct sockaddr_in));
     memset(&client_addr, 0, sizeof(struct sockaddr_in));
-    /* Tạo socket */
+    /* Create a socket */
     if (CreateSocket(port_no, &server_fd, &serv_addr) == -1)
     {
         handle_error("CreateSocket()");
         pthread_exit(NULL);
     }
+
     printf("Server is listening at port : %d \n....\n",port_no);
+    
     Client_Handler(server_fd); 
     close(server_fd);
     sleep(10);
+
     return NULL;
 }
-/**
- * @brief Thread quản lý dữ liệu
- * 
- * @param arg Tham số truyền vào
- * @return void* 
- */
+
 void *Thread_DataManager(void *arg)
 {   
     SensorData sensor_data;
+
     for (int i = 0; i < MAX_NODES; i++) {
         sensorStates[i].sensorNodeID = i;
         sensorStates[i].runningAverage = 0.0;
         sensorStates[i].sampleCount = 0;
     }
+
     while(1)
     {
         dequeue(&shared_queue, &sensor_data); 
@@ -67,6 +59,7 @@ void *Thread_DataManager(void *arg)
             printf("Data string overflow detected\n");
             continue; 
         }
+
         printf("Data from sensor %d: %s\n", sensor_data.sensorNodeID, sensor_data.data);
         Data_CaculationAverage(sensor_data);
         enqueue(&shared_queue, &sensor_data);
@@ -75,13 +68,7 @@ void *Thread_DataManager(void *arg)
     return NULL;
 }
 
-/**
- * @brief Thread control storage
- * 
- * @param arg Tham số truyền vào
- * 
- * @return void*
- */
+
 
 void *Thread_StorageManager(void *arg) {
     SensorData sensor_data;
@@ -91,10 +78,11 @@ void *Thread_StorageManager(void *arg) {
     if (result == -1) {
         pthread_exit(NULL);
     }
+    
     return NULL;
 }
 
-void mainProcess()
+void system_threads_init()
 {
     pthread_mutex_init(&resource.mutex, NULL);
     
@@ -119,13 +107,17 @@ static void Data_CaculationAverage(SensorData sensor_data)
         Log_InvalidIDSensor(nodeID);
         return; 
     }
+
     SensorNodeState *state = &sensorStates[nodeID];
-    // Cập nhật trung bình động
+    // Update the running average
     state->runningAverage = (state->runningAverage * state->sampleCount + temperature) / (state->sampleCount + 1);
     state->sampleCount++;
+
+    // Check for too hot or too cold
     if (state->runningAverage > 30) {
         Log_ReportHotSensor(nodeID, state->runningAverage);
     } else if (state->runningAverage < 15) {
         Log_ReportColdSensor(nodeID, state->runningAverage);
     }
+
 }

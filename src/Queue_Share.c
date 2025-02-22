@@ -1,8 +1,11 @@
-#include "../inc/Queue_Share.h"
+#include "../inc/queue_share.h"
 
 SharedQueue shared_queue; 
 SensorNodeState sensorStates[MAX_NODES];
-// Khởi tạo hàng đợi
+
+/**
+ * @brief Initialize the queue
+ */
 void init_queue(SharedQueue *q) {
     q->front = 0;
     q->rear = 0;
@@ -11,7 +14,9 @@ void init_queue(SharedQueue *q) {
     pthread_cond_init(&q->cond, NULL);
 }
 
-// Thêm phần tử vào hàng đợi
+/**
+ * @brief Enqueue data into the queue
+ */
 void enqueue(SharedQueue *q, SensorData *data) 
 {
     pthread_mutex_lock(&q->mutex);
@@ -30,7 +35,9 @@ void enqueue(SharedQueue *q, SensorData *data)
     pthread_mutex_unlock(&q->mutex);
 }
 
-// Lấy phần tử từ hàng đợi
+/**
+ * @brief Dequeue data from the queue
+ */
 int dequeue(SharedQueue *q, SensorData *data) 
 {
     pthread_mutex_lock(&q->mutex);

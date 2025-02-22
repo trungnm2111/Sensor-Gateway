@@ -11,22 +11,23 @@
 #include <string.h>
 #include <pthread.h>
 #include <arpa/inet.h>
-#include <sys/socket.h>     //  Chứa cấu trúc cần thiết cho socket. 
+#include <sys/socket.h>     //  socket definitions
 #include <netinet/in.h>     
 #include <errno.h>
 
-#include "Log_Process.h"
-#include "Queue_Share.h"
+#include "log_manager.h"
+#include "queue_share.h"
 
-#define MAX_CLIENTS 5       // Số lượng client tối đa
-#define MAX_CONNECTIONS 5   // Số lượng kết nối tối đa
-#define BUFFER_SIZE 256     // Kích thước buffer cho dữ liệu
+#define MAX_CLIENTS 5       // number of clients
+#define MAX_CONNECTIONS 5   // number of connections
+#define BUFFER_SIZE 256     // buffer size
 
 #define LISTEN_BACKLOG 50
 #define BUFF_SIZE 256
 #define handle_error(msg) \
     do { perror(msg); exit(EXIT_FAILURE); } while (0)
 
+    
 int CreateSocket(int port_no, int *server_fd, struct sockaddr_in *server_addr);
 void Client_Handler(int server_fd);
 

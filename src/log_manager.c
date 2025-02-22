@@ -1,25 +1,25 @@
-#include "../inc/Log_Process.h"
+#include "../inc/log_manager.h"
 
 /**
- * @brief Log process
- * 
+ * @brief Initializes the FIFO log system.
  */
 void logProcess()
 {
-    // Mở FIFO để đọc
+    // Create FIFO if not exists
     int fifo_fd = open(FIFO_NAME, O_RDONLY);
     if (fifo_fd < 0) {
         perror("Unable to open FIFO for reading");
         exit(EXIT_FAILURE);
     }
     
-    // mở file log để ghi
+    // Open log file
     FILE *log_file = fopen("gateway.log", "a"); 
     if (!log_file) {
         perror("Unable to open log file");
         close(fifo_fd);
         exit(EXIT_FAILURE);
     }
+
     int sequence_number = 0;
     char buf[256];
     char timestamp[64];
@@ -29,13 +29,13 @@ void logProcess()
         ssize_t byte_read = read(fifo_fd, buf, sizeof(buf) - 1);
         if (byte_read > 0)
         {
-            buf[byte_read] = '\0';          // Kết thúc chuỗi
+            buf[byte_read] = '\0';          
             event = strtok(buf, "\n");
             while (event != NULL)
             {
                 get_timeStamp(timestamp, sizeof(timestamp));
                 fprintf(log_file, "<%d> <%s>: %s\n", sequence_number ,timestamp, event);
-                fflush(log_file);           // Đảm bảo dữ liệu được ghi ngay
+                fflush(log_file);           
                 event = strtok(NULL, "\n");
                 sequence_number ++;
             }
@@ -47,10 +47,7 @@ void logProcess()
 }
 
 /**
- * @brief Lấy thời gian hiện tại
- * 
- * @param buffer Chuỗi lưu thời gian
- * @param size Kích thước buffer
+ * @brief Gets the current timestamp.
  */
 void get_timeStamp(char *buffer, size_t size) 
 {
@@ -61,11 +58,6 @@ void get_timeStamp(char *buffer, size_t size)
 
 /**
  * @brief Writes a log event to the FIFO log system.
- * 
- * @param log_event The log event to write.
- * 
- * This function writes a given log event to the FIFO log system.
- * It ensures that the log event is written atomically and consistently.
  */
 void write_logEvent(const char *log_event)
 {
@@ -84,14 +76,6 @@ void write_logEvent(const char *log_event)
 
 /**
  * @brief Formats a log event into a human-readable message.
- * 
- * @param event The event to format.
- * @param buffer The buffer to store the formatted message.
- * @param buffer_size The size of the buffer.
- * 
- * This function formats a given `LogEvent` structure into a human-readable
- * log message and stores it in the provided buffer. It ensures that the event
- * is recorded in a structured and consistent format.
  */
 void format_log_event(LogEvent event, char *buffer, size_t buffer_size) 
 {
@@ -135,13 +119,6 @@ void format_log_event(LogEvent event, char *buffer, size_t buffer_size)
 
 /**
  * @brief Logs an event to the FIFO log system.
- *
- * This function formats a given `LogEvent` structure into a human-readable
- * log message and writes it into a FIFO for further processing or storage.
- * It ensures that the event is recorded in a structured and consistent format.
- *
- * @param event The event to log, containing details such as the type of event,
- *              sensorNodeID, temperature value, or other additional information.
  */
 void log_event(LogEvent event) 
 {
@@ -152,11 +129,6 @@ void log_event(LogEvent event)
 
 /**
  * @brief Logs a connection opened event.
- * 
- * @param sensorNodeID The ID of the sensor node that opened the connection.
- * 
- * This function logs a connection opened event to the FIFO log system.
- * It records the sensor node ID that opened the connection.
  */
 void Log_OpenConnection(int sensorNodeID) 
 {
@@ -166,11 +138,6 @@ void Log_OpenConnection(int sensorNodeID)
 
 /**
  * @brief Logs a connection closed event.
- * 
- * @param sensorNodeID The ID of the sensor node that closed the connection.
- * 
- * This function logs a connection closed event to the FIFO log system.
- * It records the sensor node ID that closed the connection.
  */
 void Log_CloseConnection(int sensorNodeID) 
 {
@@ -180,12 +147,6 @@ void Log_CloseConnection(int sensorNodeID)
 
 /**
  * @brief Logs a sensor node reporting too cold event.
- * 
- * @param sensorNodeID The ID of the sensor node that reported the event.
- * @param avg_temp The average temperature value reported by the sensor node.
- * 
- * This function logs a sensor node reporting too cold event to the FIFO log system.
- * It records the sensor node ID and the average temperature value.
  */
 void Log_ReportColdSensor(int sensorNodeID, double avg_temp) 
 {
@@ -193,15 +154,7 @@ void Log_ReportColdSensor(int sensorNodeID, double avg_temp)
     log_event(event);
 }
 
-/**
- * @brief Logs a sensor node reporting too hot event.
- * 
- * @param sensorNodeID The ID of the sensor node that reported the event.
- * @param avg_temp The average temperature value reported by the sensor node.
- * 
- * This function logs a sensor node reporting too hot event to the FIFO log system.
- * It records the sensor node ID and the average temperature value.
- */
+
 void Log_ReportHotSensor(int sensorNodeID, double avg_temp) 
 {
     LogEvent event = { .type = TOO_HOT, .sensorNodeID = sensorNodeID, .temperatureValue = avg_temp };

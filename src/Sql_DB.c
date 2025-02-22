@@ -1,6 +1,5 @@
-#include "../inc/Sql_DB.h"
+#include "../inc/sql_db.h"
 
-// Hàm kết nối đến SQL
 MYSQL* SQL_Connect() {
     MYSQL *conn = mysql_init(NULL);
     if (!conn) {
@@ -15,7 +14,7 @@ MYSQL* SQL_Connect() {
     return conn;
 }
 
-// Hàm lưu trữ dữ liệu vào SQL
+
 bool SQL_Store(MYSQL *conn, SensorData *data) {
     char query[1024];
     snprintf(query, sizeof(query),
@@ -47,7 +46,7 @@ int HandleDatabaseStorage(SensorData *sensor_data)
                 continue; 
             }
         }
-        // Lưu trữ dữ liệu vào cơ sở dữ liệu
+        // Store data to database
         Log_SqlEstablishedConnection();
         if (!SQL_Store(db_conn, sensor_data)) {
             fprintf(stderr, "Failed to store data. Retrying...\n");
